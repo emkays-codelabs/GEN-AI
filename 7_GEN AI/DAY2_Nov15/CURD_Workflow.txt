@@ -1,0 +1,52 @@
+
+
+                        +------------------------+
+                        |      Client / API      |
+                        +------------------------+
+                                 |
+        ------------------------------------------------------
+        |                  |                 |             |
+        |                  |                 |             |
+   POST /students      GET /students/{id}   PUT /students/{id}   DELETE /students/{id}
+        |                  |                 |             |
+        |                  |                 |             |
+        v                  v                 v             v
++------------------+  +----------------+  +----------------+  +----------------+
+| Request Body JSON:|  | URL Param: id |  | Request Body JSON:|  | URL Param: id |
+| {id, name, age}   |  | student_id    |  | {name, age}       |  | student_id    |
++------------------+  +----------------+  +----------------+  +----------------+
+        |                  |                 |             |
+        |                  |                 |             |
+        v                  v                 v             v
++------------------+  +----------------+  +----------------+  +----------------+
+| Pydantic Model:  |  | None / N/A    |  | Pydantic Model: |  | None / N/A    |
+| Student          |  |                |  | StudentUpdate   |  |                |
+| - id             |  |                |  | - name          |  |                |
+| - name           |  |                |  | - age           |  |                |
+| - age            |  |                |  |                 |  |                |
++------------------+  +----------------+  +----------------+  +----------------+
+        |                  |                 |             |
+        |                  |                 |             |
+        v                  v                 v             v
++------------------+  +----------------+  +----------------+  +----------------+
+| FastAPI Endpoint:|  | FastAPI Endpoint|  | FastAPI Endpoint|  | FastAPI Endpoint|
+| - Validate data  |  | - Fetch student|  | - Validate data|  | - Validate id  |
+| - Execute INSERT |  |   by id        |  | - Execute UPDATE| | - Execute DELETE|
+|   (id, name, age)|  |   SELECT query |  |   query         | |   query         |
++------------------+  +----------------+  +----------------+  +----------------+
+        |                  |                 |             |
+        |                  |                 |             |
+        v                  v                 v             v
++------------------+  +----------------+  +----------------+  +----------------+
+| Database Action: |  | Database Action|  | Database Action|  | Database Action|
+| INSERT student   |  | SELECT student |  | UPDATE student |  | DELETE student |
++------------------+  +----------------+  +----------------+  +----------------+
+        |                  |                 |             |
+        |                  |                 |             |
+        v                  v                 v             v
++------------------+  +----------------+  +----------------+  +----------------+
+| Response to Client:| | Response to    | | Response to     | | Response to     |
+| {"message": "Student| | Client:       | | Client:        | | Client:        |
+| created"}          | | student data  | | {"message":     | | 204 No Content |
+|                    | | or 404 error  | | "Student updated"}| | if deleted    |
++------------------+  +----------------+  +----------------+  +----------------+
