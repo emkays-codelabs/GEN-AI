@@ -420,22 +420,217 @@ Suggested upgrades:
 
 ---
 
-## 🔮 What’s Next (Project)
+Perfect — let’s turn this into a **clean, professional architecture diagram** you could literally put in slides, a README, or a system design interview.
 
-Next class project:
+I’ll give you **two versions**:
 
-* Multiple PDFs
-* Chat interface
-* Source citations
-* CI/CD pipeline
-* Production-ready RAG system
+1. **Conceptual Architecture Diagram** (high-level, human-friendly)
+2. **Detailed System Workflow Diagram** (engineering-level, step-by-step)
 
-If you want, next I can:
+I’ll also explain **how to read each diagram** so it really sticks.
 
-* Draw this as a **proper architecture diagram**
-* Convert this into a **README.md**
-* Debug your current notebook line-by-line
-* Extend this into a **chatbot UI**
+---
 
-Just tell me 👍
+# 🏗️ Architecture Diagram
+
+## Multimodal Vector Search over Research PDFs
+
+---
+
+## 1️⃣ High-Level Conceptual Architecture
+
+```
+┌───────────────────────────────┐
+│        Research PDF           │
+│  (Attention Is All You Need)  │
+└───────────────┬───────────────┘
+                │
+     ┌──────────┴──────────┐
+     │   PDF Processing     │
+     │  (PyMuPDF / fitz)    │
+     └──────────┬──────────┘
+                │
+ ┌──────────────┴───────────────┐
+ │                               │
+ │                               │
+▼                               ▼
+┌───────────────┐       ┌────────────────┐
+│   Text Blocks │       │    Images       │
+│ (Paragraphs)  │       │ (Figures)       │
+└───────┬───────┘       └───────┬────────┘
+        │                       │
+        ▼                       ▼
+┌────────────────┐     ┌────────────────┐
+│ Text Embedding │     │ Image Embedding│
+│  (CLIP Model)  │     │  (CLIP Model)  │
+└───────┬────────┘     └───────┬────────┘
+        │                       │
+        ▼                       ▼
+┌────────────────┐     ┌────────────────┐
+│  Text Vectors  │     │ Image Vectors  │
+└───────┬────────┘     └───────┬────────┘
+        │                       │
+        ▼                       ▼
+┌───────────────────────┐ ┌───────────────────────┐
+│  ChromaDB Collection  │ │  ChromaDB Collection  │
+│      (Text Index)     │ │     (Image Index)     │
+└───────────┬───────────┘ └───────────┬───────────┘
+            │                           │
+            └───────────┬──────────────┘
+                        ▼
+                ┌─────────────────┐
+                │ Vector Database │
+                │   (ChromaDB)    │
+                └─────────────────┘
+```
+
+### 🧠 What this diagram explains
+
+* **PDF is the single source of truth**
+* Text and images are treated as **separate data modalities**
+* **Same embedding model (CLIP)** is used for both
+* **Two vector indexes**, one DB
+* Enables **cross-modal retrieval**
+
+---
+
+## 2️⃣ Query-Time Architecture (The Magic Part)
+
+```
+┌─────────────────────────┐
+│      User Query         │
+│ "what is transformer    │
+│   architecture?"        │
+└─────────────┬───────────┘
+              │
+              ▼
+     ┌───────────────────┐
+     │ Query Embedding   │
+     │   (CLIP - text)   │
+     └─────────┬─────────┘
+               │
+     ┌─────────┴─────────┐
+     │                   │
+     ▼                   ▼
+┌───────────────┐   ┌────────────────┐
+│ Text Vector   │   │ Image Vector   │
+│   Search      │   │   Search       │
+│ (Text Index)  │   │ (Image Index)  │
+└───────┬───────┘   └───────┬────────┘
+        │                   │
+        ▼                   ▼
+┌───────────────┐   ┌────────────────┐
+│ Relevant Text │   │ Relevant Images│
+│   Chunks      │   │   (Figures)    │
+└───────┬───────┘   └───────┬────────┘
+        │                   │
+        └─────────┬─────────┘
+                  ▼
+        ┌─────────────────────┐
+        │ Merge + Rank Results│
+        │ (by vector distance)│
+        └─────────┬───────────┘
+                  ▼
+        ┌─────────────────────┐
+        │ Final Multimodal    │
+        │ Answer (Text + Img)│
+        └─────────────────────┘
+```
+
+### 🔑 Key Insight
+
+> **One text query can retrieve images**
+> because **CLIP embeds text and images in the same vector space**
+
+This is the core innovation.
+
+---
+
+## 3️⃣ End-to-End System Workflow (Engineer View)
+
+```
+[Offline / Ingestion Pipeline]
+
+PDF
+ │
+ ├── Parse pages (PyMuPDF)
+ │
+ ├── Extract text blocks
+ │     └── Clean & chunk
+ │
+ ├── Extract images
+ │     └── Save as files
+ │
+ ├── Embed text (CLIP)
+ │
+ ├── Embed images (CLIP)
+ │
+ ├── Store text vectors → ChromaDB (Text Collection)
+ │
+ └── Store image vectors → ChromaDB (Image Collection)
+
+
+[Online / Query Pipeline]
+
+User Query (text)
+ │
+ ├── Embed query (CLIP)
+ │
+ ├── Search text collection
+ │
+ ├── Search image collection
+ │
+ ├── Combine results
+ │
+ ├── Rank by similarity
+ │
+ └── Return top-K answers
+```
+
+---
+
+## 4️⃣ Why This Architecture Is Powerful
+
+### ✅ Scalability
+
+* Add more PDFs → just embed + store
+* DB grows, logic stays the same
+
+### ✅ Model-agnostic
+
+* Swap CLIP → EVA-CLIP / BLIP
+* Swap ChromaDB → Pinecone / FAISS
+
+### ✅ Production-ready
+
+* Same architecture used in:
+
+  * ChatPDF
+  * Notion AI
+  * Enterprise document search
+  * Legal / Medical RAG systems
+
+---
+
+## 5️⃣ Architecture Patterns You Just Learned
+
+You’ve *implicitly* learned:
+
+* **RAG (Retrieval-Augmented Generation)**
+* **Multimodal indexing**
+* **Embedding pipelines**
+* **Semantic search**
+* **Vector similarity ranking**
+
+This is **senior-level system design knowledge**, not beginner stuff.
+
+---
+
+## 🧠 Final Mental Model (One-Liner)
+
+> “Everything becomes vectors.
+> Queries become vectors.
+> Similar vectors mean similar meaning.”
+
+---
 
