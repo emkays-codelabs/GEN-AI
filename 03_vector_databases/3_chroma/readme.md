@@ -1,40 +1,48 @@
 
-
 # 📘 Multimodal Vector Search using ChromaDB
+
+### Text + Image Semantic Retrieval from Research PDFs
 
 **Dataset:** *“Attention Is All You Need”* (Transformer paper)
 
 ---
 
-## 🔍 What are we trying to build?
+## 1️⃣ What Are We Trying to Build?
 
-We want a system where you can ask questions like:
+We are building a system that allows **natural language questions** over a research PDF, such as:
 
-> *“What is the transformer architecture?”*
-> *“Show me the attention diagram”*
+* *“What is the transformer architecture?”*
+* *“Show me the attention diagram”*
 
-…and the system will return:
+…and returns:
 
-* **Relevant text passages**
-* **Relevant images (figures, diagrams)**
-  from a **research paper PDF**.
+* 📄 **Relevant text passages**
+* 🖼️ **Relevant images (figures, diagrams)**
 
-This is called **multimodal retrieval** (text + images).
-
----
-
-## 🧠 Core Idea (Big Picture)
-
-Instead of keyword search:
-
-* Convert **text → vectors**
-* Convert **images → vectors**
-* Store vectors in a **vector database**
-* Search using **semantic similarity**
+This is called **multimodal semantic retrieval** — retrieving **text + images** using **meaning**, not keywords.
 
 ---
 
-## 🧩 High-Level Architecture
+## 2️⃣ Core Idea (Big Picture)
+
+Traditional search:
+
+* Keyword-based
+* Exact word matching
+* No understanding of meaning
+
+Our system:
+
+1. Convert **text → vectors**
+2. Convert **images → vectors**
+3. Store vectors in a **vector database**
+4. Search using **semantic similarity**
+
+> If two things mean the same thing, their vectors will be close — even if the words differ.
+
+---
+
+## 3️⃣ High-Level Architecture
 
 ```
 PDF
@@ -53,33 +61,46 @@ User Query (text) ──► Query Embedding
                    Ranked Results (Text + Images)
 ```
 
----
+### Key Insight
 
-## 🛠️ Technologies Used
-
-| Component                        | Purpose                        |
-| -------------------------------- | ------------------------------ |
-| **PyMuPDF (fitz)**               | Extract text & images from PDF |
-| **Pillow (PIL)**                 | Image handling                 |
-| **Sentence-Transformers (CLIP)** | Multimodal embeddings          |
-| **ChromaDB**                     | Vector database                |
-| **Hugging Face**                 | Model hosting                  |
+* Text and images are **separate modalities**
+* A **single model (CLIP)** connects them
+* One text query can retrieve **both text and images**
 
 ---
 
-## 1️⃣ Why Vector Databases?
+## 4️⃣ Technologies Used
 
-Traditional DBs store:
+| Component                    | Purpose                    |
+| ---------------------------- | -------------------------- |
+| PyMuPDF (fitz)               | Layout-aware PDF parsing   |
+| Pillow (PIL)                 | Image loading & processing |
+| Sentence-Transformers (CLIP) | Multimodal embeddings      |
+| ChromaDB (Cloud)             | Vector database            |
+| Hugging Face                 | Model hosting              |
 
-* strings
-* numbers
+---
 
-Vector DBs store:
+## 5️⃣ Why Vector Databases?
 
-* **embeddings** (arrays of numbers)
-* allow **semantic similarity search**
+Traditional databases store:
 
-### Examples:
+* Strings
+* Numbers
+* Rows & columns
+
+Vector databases store:
+
+* **Embeddings** (high-dimensional vectors)
+* Optimized similarity indexes (ANN)
+
+They enable:
+
+* Semantic search
+* Fast similarity queries
+* Scalable retrieval
+
+### Popular Vector Databases
 
 * ChromaDB
 * FAISS
@@ -89,548 +110,314 @@ Vector DBs store:
 
 ---
 
-## 2️⃣ Why CLIP?
+## 6️⃣ Why CLIP?
 
-CLIP (**Contrastive Language–Image Pretraining**) maps:
+CLIP (**Contrastive Language–Image Pretraining**) embeds:
 
-* text 📝
-* images 🖼️
+* 📝 Text
+* 🖼️ Images
 
-into **the same vector space**.
+into the **same vector space**.
 
-That means:
+### Why this matters
 
-> Text query can retrieve images
-> Image can retrieve text
+* Text → Image retrieval
+* Image → Text retrieval
+* Cross-modal semantic search
 
-Perfect for multimodal search.
+This is the **core enabler** of multimodal systems.
 
 ---
 
-## 3️⃣ Installation
+## 7️⃣ Project Structure (Fully Explained)
 
-```bash
-pip install pymupdf sentence-transformers chromadb pillow numpy
+```
+chroma_multimodal_app/
+├── pyproject.toml
+├── README.md
+├── .env
+├── data/
+│   └── attention_is_all_you_need.pdf
+├── figures/
+├── src/
+│   └── core/
+│       ├── config/
+│       │   └── settings.py
+│       ├── embeddings/
+│       │   └── clip_embeddings.py
+│       ├── ingestion/
+│       │   ├── pdf_parser.py
+│       │   └── ingest.py
+│       ├── query/
+│       │   ├── query_index.py
+│       │   └── ask.py
+│       ├── utils/
+│       │   ├── chroma_client.py
+│       │   └── file_utils.py
+│       └── main.py
+└── tests/
 ```
 
+### Why this structure?
+
+* Clear separation of concerns
+* Scales cleanly to large systems
+* Production-grade organization
+
 ---
 
-## 4️⃣ Imports & Setup
+## 8️⃣ Configuration & Environment
+
+### `.env`
+
+Stores secrets:
+
+* Chroma API key
+* Tenant
+* Database name
+
+### `settings.py`
+
+Centralized configuration:
+
+* PDF path
+* Figures directory
+* Model name (`clip-ViT-B-32`)
+* Collection names
+* Text length thresholds
+
+---
+
+## 9️⃣ PDF Parsing (Why Layout Matters)
+
+We extract text using:
 
 ```python
-import os
-import fitz  # PyMuPDF
-import numpy as np
-from PIL import Image
-from typing import List, Dict, Any
-
-from sentence_transformers import SentenceTransformer
-import chromadb
+page.get_text("blocks")
 ```
+
+Each block contains:
+
+* Bounding box `(x0, y0, x1, y1)`
+* Text content
+
+### Why blocks?
+
+* Preserve layout
+* Maintain paragraphs
+* Enable caption detection
+* Support explainability
 
 ---
 
-## 5️⃣ Load CLIP Model (from Hugging Face)
+## 🔟 Text Chunk Extraction
 
-```python
-clip_model = SentenceTransformer("clip-ViT-B-32")
-```
+### Steps
 
-### What this model does:
+1. Iterate pages
+2. Extract text blocks
+3. Clean text
+4. Skip short/noisy chunks
+5. Store metadata
 
-* `encode(text)` → text embedding
-* `encode(image)` → image embedding
-* Output: same vector dimension
+### Metadata Stored
 
----
+* Page number
+* Bounding box
+* Original text
 
-## 6️⃣ Embedding Functions (CRITICAL)
-
-### Text Embedding
-
-```python
-def embed_text(text: str) -> np.ndarray:
-    emb = clip_model.encode([text], convert_to_numpy=True)
-    return emb[0]
-```
-
-### Image Embedding
-
-```python
-def embed_image(path: str) -> np.ndarray:
-    img = Image.open(path).convert("RGB")
-    emb = clip_model.encode([img], convert_to_numpy=True)
-    return emb[0]
-```
-
-✅ **Same vector space**
-✅ **Same embedding size**
+This enables grounding and UI highlighting.
 
 ---
 
-## 7️⃣ Extract Text & Images from PDF
+## 1️⃣1️⃣ Image Extraction
 
-### Open PDF
+Using:
 
 ```python
-PDF_PATH = "attention is all you need.pdf"
-doc = fitz.open(PDF_PATH)
+page.get_images(full=True)
 ```
+
+### Steps
+
+1. Extract image bytes
+2. Save to `/figures`
+3. Record bounding boxes
+4. Store metadata
+
+Images become **searchable entities**, not just files.
 
 ---
 
-### Extract Text Blocks
+## 1️⃣2️⃣ Caption Extraction Logic
 
-```python
-text_chunks = []
+### Why captions matter
 
-for page_num, page in enumerate(doc):
-    blocks = page.get_text("blocks")
-    for b in blocks:
-        text = b[4].strip()
-        if len(text) > 50:
-            text_chunks.append({
-                "page": page_num,
-                "text": text
-            })
-```
+Images alone lack semantic meaning.
 
-📌 **Why blocks?**
-Blocks preserve layout better than raw text.
-
----
-
-### Extract Images
-
-```python
-FIGURES_DIR = "figures"
-os.makedirs(FIGURES_DIR, exist_ok=True)
-
-image_metadata = []
-
-for page_num, page in enumerate(doc):
-    images = page.get_images(full=True)
-    for img_index, img in enumerate(images):
-        xref = img[0]
-        base_image = doc.extract_image(xref)
-        image_bytes = base_image["image"]
-        image_ext = base_image["ext"]
-
-        image_path = f"{FIGURES_DIR}/page{page_num}_img{img_index}.{image_ext}"
-        with open(image_path, "wb") as f:
-            f.write(image_bytes)
-
-        image_metadata.append({
-            "page": page_num,
-            "path": image_path
-        })
-```
-
----
-
-## 8️⃣ Caption Extraction Logic (Conceptual)
-
-📌 Captions usually:
-
-* Appear **below images**
-* Start with “Figure X”
-
-Logic:
+### Heuristic
 
 1. Get image bounding box
-2. Find nearest text block below
-3. Assign as caption
+2. Find text blocks **below** the image
+3. Choose the closest vertically
+4. Assign as caption
 
-(This is heuristic-based and imperfect — but practical)
+This heuristic is imperfect but **works well for academic PDFs**.
 
 ---
 
-## 9️⃣ Initialize ChromaDB
+## 1️⃣3️⃣ CLIP Embeddings
 
-```python
-client = chromadb.Client()
+### Model
+
+```
+clip-ViT-B-32
+```
+
+### Embedding Functions
+
+* `embed_text(text)`
+* `embed_image(image_path)`
+
+Both produce vectors in:
+
+* Same dimension
+* Same semantic space
+
+---
+
+## 1️⃣4️⃣ ChromaDB Collections
+
+Two collections:
+
+| Collection | Purpose                   |
+| ---------- | ------------------------- |
+| Text       | Paragraph-level semantics |
+| Images     | Visual semantics          |
+
+Stored in **Chroma Cloud**.
+
+---
+
+## 1️⃣5️⃣ Ingestion Pipeline
+
+Implemented in `ingest.py`.
+
+### Steps
+
+1. Load PDF
+2. Extract text & images
+3. Generate embeddings
+4. Upload to ChromaDB with metadata
+
+This is an **offline process**.
+
+---
+
+## 1️⃣6️⃣ Query Pipeline (Core Logic)
+
+Implemented in `query_index.py`.
+
+### Flow
+
+1. User query → text
+2. Embed query using CLIP
+3. Search text collection
+4. Search image collection
+5. Merge results
+6. Rank by similarity
+
+---
+
+## 1️⃣7️⃣ CLI Query Interface
+
+`ask.py` provides:
+
+* Command-line querying
+* Debugging & demos
+* Developer-friendly testing
+
+---
+
+## 1️⃣8️⃣ End-to-End Workflow
+
+```
+[Ingestion]
+PDF → parse → embed → ChromaDB
+
+[Query]
+Query → embed → search → merge → rank → results
 ```
 
 ---
 
-## 🔟 Create Two Separate Indexes
+## 1️⃣9️⃣ Architecture Patterns Used
 
-Why two?
-
-| Index           | Reason                   |
-| --------------- | ------------------------ |
-| **Text Index**  | Optimized for paragraphs |
-| **Image Index** | Optimized for figures    |
-
-```python
-text_collection = client.create_collection("paper_text")
-image_collection = client.create_collection("paper_images")
-```
+* Multimodal indexing
+* Vector similarity search
+* Metadata-aware retrieval
+* Retrieval-Augmented Generation (RAG foundation)
 
 ---
 
-## 1️⃣1️⃣ Store Text Embeddings
+## 2️⃣0️⃣ Model Improvements (Suggested Upgrades)
 
-```python
-for i, chunk in enumerate(text_chunks):
-    emb = embed_text(chunk["text"])
-    text_collection.add(
-        ids=[f"text_{i}"],
-        embeddings=[emb],
-        documents=[chunk["text"]],
-        metadatas=[{"page": chunk["page"]}]
-    )
-```
+| Model         | Benefit                            |
+| ------------- | ---------------------------------- |
+| EVA-CLIP      | Better image understanding         |
+| BLIP / BLIP-2 | Caption-aware embeddings           |
+| LayoutLM      | Strong PDF structure understanding |
+
+The system is **model-agnostic**.
 
 ---
 
-## 1️⃣2️⃣ Store Image Embeddings
+## 2️⃣1️⃣ Alternative Vector Databases
 
-```python
-for i, img in enumerate(image_metadata):
-    emb = embed_image(img["path"])
-    image_collection.add(
-        ids=[f"img_{i}"],
-        embeddings=[emb],
-        metadatas=[{
-            "page": img["page"],
-            "path": img["path"]
-        }]
-    )
-```
+| Database | Strength          |
+| -------- | ----------------- |
+| FAISS    | Fast local search |
+| Pinecone | Managed cloud     |
+| Weaviate | Schema + graph    |
+| Qdrant   | Rust, very fast   |
 
 ---
 
-## 1️⃣3️⃣ Query Function (THE HEART)
+## 2️⃣2️⃣ Key Concepts You Learned
 
-```python
-def answer_query(
-    query: str,
-    top_k_text: int = 5,
-    top_k_img: int = 5,
-    top_k_overall: int = 8
-) -> List[Dict[str, Any]]:
-
-    q_emb = embed_text(query)
-
-    text_results = text_collection.query(
-        query_embeddings=[q_emb],
-        n_results=top_k_text
-    )
-
-    img_results = image_collection.query(
-        query_embeddings=[q_emb],
-        n_results=top_k_img
-    )
-
-    combined = []
-
-    for i in range(len(text_results["ids"][0])):
-        combined.append({
-            "type": "text",
-            "content": text_results["documents"][0][i],
-            "distance": text_results["distances"][0][i]
-        })
-
-    for i in range(len(img_results["ids"][0])):
-        combined.append({
-            "type": "image",
-            "path": img_results["metadatas"][0][i]["path"],
-            "distance": img_results["distances"][0][i]
-        })
-
-    combined.sort(key=lambda x: x["distance"])
-    return combined[:top_k_overall]
-```
+* Embeddings & vector spaces
+* Semantic vs keyword search
+* Multimodal retrieval
+* PDF layout understanding
+* Metadata-driven AI systems
+* Real-world RAG architectures
 
 ---
 
-## 1️⃣4️⃣ Example Query
+## 2️⃣3️⃣ Key Takeaways
 
-```python
-answer_query(
-    "what is transformer architecture",
-    top_k_text=2,
-    top_k_img=1,
-    top_k_overall=3
-)
-```
-
-### Output:
-
-* Text explaining self-attention
-* Transformer block diagram image
+✅ Vector search beats keyword search
+✅ CLIP enables cross-modal retrieval
+✅ Data preparation matters more than models
+✅ Separate indexes improve quality
+✅ This is the foundation of **ChatPDF systems**
 
 ---
 
-## 🔁 Workflow Summary Diagram
+## 2️⃣4️⃣ Final Mental Model
 
-```
-PDF
- ├── Extract Text ──► Embed ──► Text Vector DB
- ├── Extract Images ─► Embed ──► Image Vector DB
- │
-User Query
- └── Embed Query
-       ├── Search Text DB
-       ├── Search Image DB
-       └── Merge + Rank Results
-```
-
----
-
-## 🚀 Model Improvements
-
-Suggested upgrades:
-
-* **EVA-CLIP** → better image understanding
-* **BLIP / BLIP-2** → caption-aware embeddings
-* **LayoutLM** → better PDF structure understanding
-
----
-
-## 🔄 Alternative Vector Databases
-
-| DB       | Strength        |
-| -------- | --------------- |
-| FAISS    | Fast local      |
-| Pinecone | Managed cloud   |
-| Weaviate | Schema + Graph  |
-| Qdrant   | Rust, very fast |
-
----
-
-## 🧠 Key Concepts You Learned
-
-* What embeddings are
-* Why vector databases matter
-* How multimodal models work
-* How to extract structured data from PDFs
-* How RAG systems are built internally
-
----
-
-## 🎯 Key Takeaways
-
-✅ **Vector search beats keyword search**
-✅ **CLIP enables cross-modal retrieval**
-✅ **Data preparation matters more than models**
-✅ **Separate indexes improve quality**
-✅ **This is the foundation of ChatPDF systems**
-
----
-
-Perfect — let’s turn this into a **clean, professional architecture diagram** you could literally put in slides, a README, or a system design interview.
-
-I’ll give you **two versions**:
-
-1. **Conceptual Architecture Diagram** (high-level, human-friendly)
-2. **Detailed System Workflow Diagram** (engineering-level, step-by-step)
-
-I’ll also explain **how to read each diagram** so it really sticks.
-
----
-
-# 🏗️ Architecture Diagram
-
-## Multimodal Vector Search over Research PDFs
-
----
-
-## 1️⃣ High-Level Conceptual Architecture
-
-```
-┌───────────────────────────────┐
-│        Research PDF           │
-│  (Attention Is All You Need)  │
-└───────────────┬───────────────┘
-                │
-     ┌──────────┴──────────┐
-     │   PDF Processing     │
-     │  (PyMuPDF / fitz)    │
-     └──────────┬──────────┘
-                │
- ┌──────────────┴───────────────┐
- │                               │
- │                               │
-▼                               ▼
-┌───────────────┐       ┌────────────────┐
-│   Text Blocks │       │    Images       │
-│ (Paragraphs)  │       │ (Figures)       │
-└───────┬───────┘       └───────┬────────┘
-        │                       │
-        ▼                       ▼
-┌────────────────┐     ┌────────────────┐
-│ Text Embedding │     │ Image Embedding│
-│  (CLIP Model)  │     │  (CLIP Model)  │
-└───────┬────────┘     └───────┬────────┘
-        │                       │
-        ▼                       ▼
-┌────────────────┐     ┌────────────────┐
-│  Text Vectors  │     │ Image Vectors  │
-└───────┬────────┘     └───────┬────────┘
-        │                       │
-        ▼                       ▼
-┌───────────────────────┐ ┌───────────────────────┐
-│  ChromaDB Collection  │ │  ChromaDB Collection  │
-│      (Text Index)     │ │     (Image Index)     │
-└───────────┬───────────┘ └───────────┬───────────┘
-            │                           │
-            └───────────┬──────────────┘
-                        ▼
-                ┌─────────────────┐
-                │ Vector Database │
-                │   (ChromaDB)    │
-                └─────────────────┘
-```
-
-### 🧠 What this diagram explains
-
-* **PDF is the single source of truth**
-* Text and images are treated as **separate data modalities**
-* **Same embedding model (CLIP)** is used for both
-* **Two vector indexes**, one DB
-* Enables **cross-modal retrieval**
-
----
-
-## 2️⃣ Query-Time Architecture (The Magic Part)
-
-```
-┌─────────────────────────┐
-│      User Query         │
-│ "what is transformer    │
-│   architecture?"        │
-└─────────────┬───────────┘
-              │
-              ▼
-     ┌───────────────────┐
-     │ Query Embedding   │
-     │   (CLIP - text)   │
-     └─────────┬─────────┘
-               │
-     ┌─────────┴─────────┐
-     │                   │
-     ▼                   ▼
-┌───────────────┐   ┌────────────────┐
-│ Text Vector   │   │ Image Vector   │
-│   Search      │   │   Search       │
-│ (Text Index)  │   │ (Image Index)  │
-└───────┬───────┘   └───────┬────────┘
-        │                   │
-        ▼                   ▼
-┌───────────────┐   ┌────────────────┐
-│ Relevant Text │   │ Relevant Images│
-│   Chunks      │   │   (Figures)    │
-└───────┬───────┘   └───────┬────────┘
-        │                   │
-        └─────────┬─────────┘
-                  ▼
-        ┌─────────────────────┐
-        │ Merge + Rank Results│
-        │ (by vector distance)│
-        └─────────┬───────────┘
-                  ▼
-        ┌─────────────────────┐
-        │ Final Multimodal    │
-        │ Answer (Text + Img)│
-        └─────────────────────┘
-```
-
-### 🔑 Key Insight
-
-> **One text query can retrieve images**
-> because **CLIP embeds text and images in the same vector space**
-
-This is the core innovation.
-
----
-
-## 3️⃣ End-to-End System Workflow (Engineer View)
-
-```
-[Offline / Ingestion Pipeline]
-
-PDF
- │
- ├── Parse pages (PyMuPDF)
- │
- ├── Extract text blocks
- │     └── Clean & chunk
- │
- ├── Extract images
- │     └── Save as files
- │
- ├── Embed text (CLIP)
- │
- ├── Embed images (CLIP)
- │
- ├── Store text vectors → ChromaDB (Text Collection)
- │
- └── Store image vectors → ChromaDB (Image Collection)
-
-
-[Online / Query Pipeline]
-
-User Query (text)
- │
- ├── Embed query (CLIP)
- │
- ├── Search text collection
- │
- ├── Search image collection
- │
- ├── Combine results
- │
- ├── Rank by similarity
- │
- └── Return top-K answers
-```
-
----
-
-## 4️⃣ Why This Architecture Is Powerful
-
-### ✅ Scalability
-
-* Add more PDFs → just embed + store
-* DB grows, logic stays the same
-
-### ✅ Model-agnostic
-
-* Swap CLIP → EVA-CLIP / BLIP
-* Swap ChromaDB → Pinecone / FAISS
-
-### ✅ Production-ready
-
-* Same architecture used in:
-
-  * ChatPDF
-  * Notion AI
-  * Enterprise document search
-  * Legal / Medical RAG systems
-
----
-
-## 5️⃣ Architecture Patterns You Just Learned
-
-You’ve *implicitly* learned:
-
-* **RAG (Retrieval-Augmented Generation)**
-* **Multimodal indexing**
-* **Embedding pipelines**
-* **Semantic search**
-* **Vector similarity ranking**
-
-This is **senior-level system design knowledge**, not beginner stuff.
-
----
-
-## 🧠 Final Mental Model (One-Liner)
-
-> “Everything becomes vectors.
+> Everything becomes vectors.
 > Queries become vectors.
-> Similar vectors mean similar meaning.”
+> Similar vectors mean similar meaning.
 
 ---
+
+## 2️⃣5️⃣ Why This Project Matters
+
+This architecture is used in:
+
+* ChatPDF systems
+* Enterprise document search
+* Legal & medical RAG pipelines
+* Multimodal AI assistants
 
